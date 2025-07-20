@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Harcama Takip</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        h1, h3 {
+            color: #343a40;
+        }
+        .navbar-custom {
+            background-color: #007bff;
+        }
+        .navbar-custom a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .card {
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        table thead {
+            background-color: #343a40;
+            color: white;
+        }
+        .table-responsive {
+            max-height: 500px;
+            overflow-x: auto;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-custom mb-4 px-4">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="#">Harcama Takip</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <span class="navbar-text text-white me-3">Hoşgeldin, <strong>{{ username }}</strong>!</span>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('admin_users') }}" class="btn btn-warning btn-sm me-2 mb-1">Admin Paneli</a>
+            {% endif %}
+            <a href="/logout" class="btn btn-outline-light btn-sm mb-1">Çıkış Yap</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+
+    <!-- Harcamalar Kartı -->
+    <div class="card p-3">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3">
+            <a href="/add_expense" class="btn btn-primary mb-2 mb-md-0">➕ Yeni Harcama Ekle</a>
+            <h3 class="text-center text-md-start m-0">💸 Harcamalar</h3>
+        </div>
+
+        <a href="/debts" class="btn btn-success w-100 mb-4">💰 Borç Durumunu Görüntüle</a>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Açıklama</th>
+                        <th>Tutar (₺)</th>
+                        <th>Tarih</th>
+                        <th>Kim Ödedi</th>
+                        <th>Fiş</th>
+                        <th>İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                    <tr>
+                        <td>{{ expense.description }}</td>
+                        <td>{{ "%.2f"|format(expense.amount) }}</td>
+                        <td>{{ expense.date }}</td>
+                        <td>{{ expense.paid_by.name }}</td>
+                        <td>
+                            {% if expense.receipt_filename %}
+                                <!-- Cloudinary URL direkt olarak kullanılıyor -->
+                                <a href="{{ expense.receipt_filename }}" target="_blank" class="link-primary">Görüntüle</a>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if expense.payer_id == current_user.id %}
+                            <form method="POST" action="{{ url_for('delete_expense', expense_id=expense.id) }}" onsubmit="return confirm('Bu harcamayı silmek istediğinize emin misiniz?');" style="display:inline;">
+                                <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Henüz harcama bulunmamaktadır.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav aria-label="Sayfalama">
+            <ul class="pagination justify-content-center mt-3 flex-wrap">
+                {% if pagination.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('index', page=pagination.prev_num) }}">Önceki</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Önceki</span></li>
+                {% endif %}
+
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        {% if page_num == pagination.page %}
+                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                        {% else %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('index', page=page_num) }}">{{ page_num }}</a></li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('index', page=pagination.next_num) }}">Sonraki</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">Sonraki</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Kullanıcılar Kartı -->
+    <div class="card p-3">
+        <h3 class="mb-3">Kayıtlı Kullanıcılar</h3>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Kullanıcı Adı</th>
+                        {% if current_user.is_admin %}
+                        <th>İşlem</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for person in persons %}
+                    <tr>
+                        <td>{{ person.name }}</td>
+                        {% if current_user.is_admin %}
+                        <td>
+                            {% if not person.is_admin %}
+                            <form method="POST" action="{{ url_for('admin_delete_user', user_id=person.id) }}" onsubmit="return confirm('Kullanıcıyı silmek istediğinize emin misiniz?');">
+                                <button type="submit" class="btn btn-danger btn-sm">Sil</button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="{% if current_user.is_admin %}2{% else %}1{% endif %}" class="text-center text-muted">Henüz kullanıcı bulunmamaktadır.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<footer class="footer">
+    <p>© 2025 Uyanoğulları Geliştirme ve Yazılım</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
